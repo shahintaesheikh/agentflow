@@ -1,13 +1,22 @@
 from dotenv import load_dotenv
+from dataclasses import dataclass
 from pydantic import BaseModel
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain.agents import create_tool_calling_agent
-from langchain.agents import AgentExecutor
-from tools import search_tool, wiki_tool, save_tool
+from langchain.agents import create_agent
+from langchain_community.document_loaders import TextLoader
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_core.vectorstores import VectorStoreRetriever
+from langgraph.checkpoint.memory import InMemorySaver
+from tools import search_tool, wiki_tool
 
 load_dotenv()
+
+@dataclass
+class Context:
+    user_id: str
 
 class ResearchResponse(BaseModel):
     topic: str
@@ -35,17 +44,22 @@ prompt = ChatPromptTemplate(
     ]
 ).partial(format_instructions = parser.get_format_instructions())
 
-tools = [search_tool, wiki_tool, save_tool]
-agent = create_tool_calling_agent(
-    llm = llm,
-    prompt = prompt,
-    tools = tools
+checkpointer = InMemorySaver()
+
+tools = [search_tool, wiki_tool]
+
+agent = create_agent(
+    model = "claude-sonnet-4-20250514",
+    tools = tools,
+    system_prompt=prompt,
+    response_format=ResearchResponse,
+    checkpointer=InMemorySaver
 )
 
-agent_executor = AgentExecutor(agent = agent, tools = tools, verbose=True)
+#agent_executor = AgentExecutor(agent = agent, tools = tools, verbose=True)
 
 def run_research_query(query: str) -> ResearchResponse:
-    raw_response = agent_executor.invoke({"input": query})
+    raw_response = agent.invoke({"input": query})
 
     #exctract text from agent response
     output = raw_response["output"]
@@ -58,6 +72,9 @@ def run_research_query(query: str) -> ResearchResponse:
 if __name__ == "__main__":
     #test queries
     query = input("What can I help you research?\n")
+    ss_want = input("Would you like to submit a screenshot?\n")
+    if ss_want:
+        ss_query = input("Attach the file path here: ")
 
     print(f"Running query: {query}\n")
     response = run_research_query(query)

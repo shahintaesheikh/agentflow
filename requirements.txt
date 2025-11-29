@@ -2,5 +2,8 @@ langchain
 wikipedia
 langchain-community
 langchain-anthropic
+anthropic
 python-dotenv
 pydantic
+langchain-openai
+faiss-cpu
