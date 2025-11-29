@@ -59,7 +59,7 @@ def agent_loop(query: str, max_iterations: int = 10) -> str:
             messages=messages
         )
 
-        # Add assistant response to message history
+        #add response to message history
         messages.append({
             "role": "assistant",
             "content": response.content
@@ -67,20 +67,20 @@ def agent_loop(query: str, max_iterations: int = 10) -> str:
 
         # Check if we're done (stop_reason == "end_turn")
         if response.stop_reason == "end_turn":
-            # Extract the final text response
+            #extract the final text response
             for block in response.content:
                 if hasattr(block, "text"):
                     return block.text
             return ""
 
-        # Execute tools if requested
+        #execute any tools necessary
         tool_results = []
         for block in response.content:
             if block.type == "tool_use":
                 tool_name = block.name
                 tool_input = block.input
 
-                # Execute the tool
+                #execute the tool
                 result = execute_tool(tool_name, tool_input)
 
                 tool_results.append({
@@ -89,7 +89,7 @@ def agent_loop(query: str, max_iterations: int = 10) -> str:
                     "content": result
                 })
 
-        # Add tool results to messages if any were executed
+        #Add tool to messages if any were executed
         if tool_results:
             messages.append({
                 "role": "user",
@@ -121,7 +121,7 @@ def run_research_query(query: str) -> ResearchResponse:
         except (json.JSONDecodeError, ValueError) as e:
             print(f"Warning: Could not parse response as JSON: {e}")
             print(f"Raw response: {response_text}")
-            # Return a default response with the raw text
+            #Return a default response with the raw text
             result_dict = {
                 "topic": "Unknown",
                 "summary": response_text,
