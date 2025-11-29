@@ -2,7 +2,6 @@ from langchain_community.tools import WikipediaQueryRun, DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.tools import tool, ToolRuntime
 from datetime import datetime
-import json
 
 def save_to_txt(data: str, filename: str = "research_output.txt"):
     timestamp = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")

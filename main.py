@@ -1,22 +1,11 @@
 from dotenv import load_dotenv
-from dataclasses import dataclass
 from pydantic import BaseModel
-from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain.agents import create_agent
-from langchain_community.document_loaders import TextLoader
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_core.vectorstores import VectorStoreRetriever
-from langgraph.checkpoint.memory import InMemorySaver
-from tools import search_tool, wiki_tool
+from anthropic import Anthropic
+from tools import get_tool_schemas, execute_tool
+import json
+import os
 
 load_dotenv()
-
-@dataclass
-class Context:
-    user_id: str
 
 class ResearchResponse(BaseModel):
     topic: str
@@ -24,57 +13,149 @@ class ResearchResponse(BaseModel):
     sources: list[str]
     tools_used: list[str]
 
-llm = ChatAnthropic(model = "claude-sonnet-4-20250514")
+SYSTEM_PROMPT = """You are a research assistant that helps generate research papers and synthesize information.
 
-parser = PydanticOutputParser(pydantic_object=ResearchResponse)
+You have access to three tools:
+1. search - Search the web using DuckDuckGo for current information
+2. wikipedia - Search Wikipedia for detailed reference material
+3. save - Save your research findings to a file
 
-prompt = ChatPromptTemplate(
-    [
-        (
-            "system",
-            """
-            You are a research assistant that will help generate a research paper.
-            Answer the user query and use necessary tools.
-            Wrap the output in this format and provide no other text\n{format_instructions}
-            """
-        ),
-        ("placeholder", "{chat_history}"),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ]
-).partial(format_instructions = parser.get_format_instructions())
+When answering queries:
+- Use the search tool to find current information and news
+- Use the wikipedia tool to get comprehensive background information
+- Synthesize the information you find
+- When you have gathered sufficient information, provide your final response as valid JSON
 
-checkpointer = InMemorySaver()
+Your final response MUST be valid JSON with exactly these fields:
+{
+  "topic": "The main topic being researched",
+  "summary": "A comprehensive summary of your findings",
+  "sources": ["url1", "url2", ...],
+  "tools_used": ["search", "wikipedia", ...]
+}
 
-tools = [search_tool, wiki_tool]
+Important: Return ONLY the JSON, no other text."""
 
-agent = create_agent(
-    model = "claude-sonnet-4-20250514",
-    tools = tools,
-    system_prompt=prompt,
-    response_format=ResearchResponse,
-    checkpointer=InMemorySaver
-)
+def initialize_agent():
+    client = Anthropic()
+    tools = get_tool_schemas()
+    return client, tools
 
-#agent_executor = AgentExecutor(agent = agent, tools = tools, verbose=True)
+def agent_loop(query: str, max_iterations: int = 10) -> str:
+    """Run the agent loop for a research query"""
+    client, tools = initialize_agent()
+
+    messages = [{"role": "user", "content": query}]
+    iteration = 0
+
+    while iteration < max_iterations:
+        iteration += 1
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            system=SYSTEM_PROMPT,
+            tools=tools,
+            messages=messages
+        )
+
+        # Add assistant response to message history
+        messages.append({
+            "role": "assistant",
+            "content": response.content
+        })
+
+        # Check if we're done (stop_reason == "end_turn")
+        if response.stop_reason == "end_turn":
+            # Extract the final text response
+            for block in response.content:
+                if hasattr(block, "text"):
+                    return block.text
+            return ""
+
+        # Execute tools if requested
+        tool_results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                tool_name = block.name
+                tool_input = block.input
+
+                # Execute the tool
+                result = execute_tool(tool_name, tool_input)
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": result
+                })
+
+        # Add tool results to messages if any were executed
+        if tool_results:
+            messages.append({
+                "role": "user",
+                "content": tool_results
+            })
+
+    return "Max iterations reached without completion"
+
 
 def run_research_query(query: str) -> ResearchResponse:
-    raw_response = agent.invoke({"input": query})
+    """Output structured response"""
+    response_text = agent_loop(query)
 
-    #exctract text from agent response
-    output = raw_response["output"]
-    if isinstance(output, list) and len(output) > 0:
-        output = output[0].get("text", "") if isinstance(output[0], dict) else str(output[0])
+    #extract JSON from response
+    try:
+        #try to parse the entire response as JSON first
+        result_dict = json.loads(response_text)
+    except json.JSONDecodeError:
+        #if that fails, try to find JSON in the response
+        try:
+            #look for JSON block in the response
+            start_idx = response_text.find("{")
+            end_idx = response_text.rfind("}") + 1
+            if start_idx >= 0 and end_idx > start_idx:
+                json_str = response_text[start_idx:end_idx]
+                result_dict = json.loads(json_str)
+            else:
+                raise ValueError("No JSON found in response")
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Warning: Could not parse response as JSON: {e}")
+            print(f"Raw response: {response_text}")
+            # Return a default response with the raw text
+            result_dict = {
+                "topic": "Unknown",
+                "summary": response_text,
+                "sources": [],
+                "tools_used": []
+            }
 
-    result = parser.parse(output)
+    #Convert to ResearchResponse
+    try:
+        result = ResearchResponse(**result_dict)
+    except Exception as e:
+        print(f"Warning: Could not convert response to ResearchResponse: {e}")
+        #Return with raw data
+        result = ResearchResponse(
+            topic=result_dict.get("topic", "Unknown"),
+            summary=result_dict.get("summary", ""),
+            sources=result_dict.get("sources", []),
+            tools_used=result_dict.get("tools_used", [])
+        )
+
     return result
 
 if __name__ == "__main__":
-    #test queries
+    #Get user input
     query = input("What can I help you research?\n")
-    ss_want = input("Would you like to submit a screenshot?\n")
-    if ss_want:
-        ss_query = input("Attach the file path here: ")
+
+    #Optional screenshot functionality (for future implementation)
+    ss_want = input("Would you like to submit a screenshot? (y/n): ").lower().strip()
+    if ss_want in ["y", "yes"]:
+        ss_path = input("Enter the file path to the screenshot: ")
+        if os.path.exists(ss_path):
+            query = f"Please analyze this screenshot and research related topics: {query}\n[Screenshot will be added in Phase 1b]"
+        else:
+            print(f"Screenshot file not found: {ss_path}")
 
     print(f"Running query: {query}\n")
     response = run_research_query(query)
@@ -84,5 +165,5 @@ if __name__ == "__main__":
     print("="*60)
     print(f"Topic: {response.topic}")
     print(f"\nSummary:\n{response.summary}")
-    print(f"\nSources: {response.sources}")
-    print(f"\nTools Used: {response.tools_used}")
+    print(f"\nSources: {', '.join(response.sources) if response.sources else 'None'}")
+    print(f"\nTools Used: {', '.join(response.tools_used) if response.tools_used else 'None'}")
