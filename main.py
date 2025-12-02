@@ -4,6 +4,8 @@ from anthropic import Anthropic
 from tools import get_tool_schemas, execute_tool
 import json
 import os
+import base64
+from pathlib import Path
 
 load_dotenv()
 
@@ -13,39 +15,75 @@ class ResearchResponse(BaseModel):
     sources: list[str]
     tools_used: list[str]
 
-SYSTEM_PROMPT = """You are a research assistant that helps generate research papers and synthesize information.
+SYSTEM_PROMPT = """You are a research assistant. Use tools to find information, then respond with ONLY valid JSON.
 
-You have access to three tools:
-1. search - Search the web using DuckDuckGo for current information
-2. wikipedia - Search Wikipedia for detailed reference material
-3. save - Save your research findings to a file
+Tools available: search (web), wikipedia, save (file).
 
-When answering queries:
-- Use the search tool to find current information and news
-- Use the wikipedia tool to get comprehensive background information
-- Synthesize the information you find
-- When you have gathered sufficient information, provide your final response as valid JSON
-
-Your final response MUST be valid JSON with exactly these fields:
+ALWAYS respond in this JSON format and ONLY JSON:
 {
-  "topic": "The main topic being researched",
-  "summary": "A comprehensive summary of your findings",
-  "sources": ["url1", "url2", ...],
-  "tools_used": ["search", "wikipedia", ...]
+  "topic": "Brief topic title",
+  "summary": "Comprehensive summary of findings",
+  "sources": ["url1", "url2"],
+  "tools_used": ["search", "wikipedia", "save"]
 }
 
-Important: Return ONLY the JSON, no other text."""
+After 1-2 tool uses, synthesize findings into the JSON response immediately."""
 
 def initialize_agent():
     client = Anthropic()
     tools = get_tool_schemas()
     return client, tools
 
-def agent_loop(query: str, max_iterations: int = 10) -> str:
-    """Run the agent loop for a research query"""
+def load_image_as_base64(image_path: str) -> str:
+    """Load an image file and encode it as base64"""
+    try:
+        with open(image_path, "rb") as image_file:
+            return base64.standard_b64encode(image_file.read()).decode("utf-8")
+    except Exception as e:
+        raise ValueError(f"Could not load image: {e}")
+
+def get_image_media_type(image_path: str) -> str:
+    """Determine the media type based on file extension"""
+    extension = Path(image_path).suffix.lower()
+    media_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".webp": "image/webp"
+    }
+    return media_types.get(extension, "image/jpeg")
+
+def agent_loop(query: str, image_path: str = None, max_iterations: int = 10) -> str:
+    """Run the agent loop for a research query, optionally with an image"""
     client, tools = initialize_agent()
 
-    messages = [{"role": "user", "content": query}]
+    # Build the initial message with optional image
+    user_content = []
+
+    #Image analysis 
+    if image_path and os.path.exists(image_path):
+        try:
+            image_data = load_image_as_base64(image_path)
+            media_type = get_image_media_type(image_path)
+            user_content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": image_data
+                }
+            })
+        except Exception as e:
+            print(f"Warning: Could not load image: {e}")
+
+    # Add text query
+    user_content.append({
+        "type": "text",
+        "text": query
+    })
+
+    messages = [{"role": "user", "content": user_content}]
     iteration = 0
 
     while iteration < max_iterations:
@@ -99,9 +137,9 @@ def agent_loop(query: str, max_iterations: int = 10) -> str:
     return "Max iterations reached without completion"
 
 
-def run_research_query(query: str) -> ResearchResponse:
-    """Output structured response"""
-    response_text = agent_loop(query)
+def run_research_query(query: str, image_path: str = None) -> ResearchResponse:
+    """Output structured response, optionally with image analysis"""
+    response_text = agent_loop(query, image_path=image_path)
 
     #extract JSON from response
     try:
@@ -148,17 +186,20 @@ if __name__ == "__main__":
     #Get user input
     query = input("What can I help you research?\n")
 
-    #Optional screenshot functionality (for future implementation)
+    # Optional screenshot functionality
+    image_path = None
     ss_want = input("Would you like to submit a screenshot? (y/n): ").lower().strip()
     if ss_want in ["y", "yes"]:
-        ss_path = input("Enter the file path to the screenshot: ")
-        if os.path.exists(ss_path):
-            query = f"Please analyze this screenshot and research related topics: {query}\n[Screenshot will be added in Phase 1b]"
+        ss_path = input("Enter the file path to the screenshot: ").strip()
+        if ss_path and os.path.exists(ss_path):
+            image_path = ss_path
+            query = f"Please analyze this screenshot and answer the following question: {query}"
+            print(f"Screenshot loaded: {ss_path}")
         else:
             print(f"Screenshot file not found: {ss_path}")
 
-    print(f"Running query: {query}\n")
-    response = run_research_query(query)
+    print(f"\nRunning query: {query}\n")
+    response = run_research_query(query, image_path=image_path)
 
     print("\n" + "="*60)
     print("RESULTS")
