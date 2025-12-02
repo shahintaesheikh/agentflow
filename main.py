@@ -17,14 +17,18 @@ class ResearchResponse(BaseModel):
 
 SYSTEM_PROMPT = """You are a research assistant. Use tools to find information, then respond with ONLY valid JSON.
 
-Tools available: search (web), wikipedia, save (file).
+Tools available:
+- search: Search the web for current information
+- wikipedia: Search Wikipedia for reference material
+- semantic_search: Search indexed documents by meaning (if initialized)
+- save: Save findings to file
 
 ALWAYS respond in this JSON format and ONLY JSON:
 {
   "topic": "Brief topic title",
   "summary": "Comprehensive summary of findings",
   "sources": ["url1", "url2"],
-  "tools_used": ["search", "wikipedia", "save"]
+  "tools_used": ["search", "wikipedia", "semantic_search", "save"]
 }
 
 After 1-2 tool uses, synthesize findings into the JSON response immediately."""

@@ -7,3 +7,5 @@ python-dotenv
 pydantic
 langchain-openai
 faiss-cpu
+sentence-transformers
+numpy
