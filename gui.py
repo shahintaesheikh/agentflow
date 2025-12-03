@@ -1,24 +1,45 @@
 import tkinter as tk
+from tkinter import messagebox
+from PIL import ImageGrab
 
-
-class MyGUI:
+class AgentGUI:
 
     def __init__(self):
         self.root = tk.Tk()
+        self.setup_ui()
+        self.worker_thread = None
 
-        self.root.geometry("800x500")
-        self.root.title("First GUI")
+    def setup_ui(self):
+        """Build UI components"""
 
-        self.label = tk.Label(self.root, text = "Hello World", font = ('Arial', 16))
-        self.label.pack(padx = 20, pady= 20)
+    def on_read_screen_clicked(self):
+        screenshot = ImageGrab.grab()
 
-        self.textbox = tk.Text(self.root, height=3, font = ('Arial', 16))
-        self.textbox.pack(padx = 10, pady = 10)
+        temp_path = "/tmp/screen_capture.png"
+        screenshot.save(temp_path)
 
-        self.button = tk.Button(self.root, text="Click Me!", font = ('Arial',18))
-        self.button.pack(padx = 10, pady = 10)
+        self.selected_image_path = temp_path
+        self.update_image_display()
 
-        self.button_frame = tk.Frame(self.root)
-        self.button_frame.pack(fill = 'x')
-
-        self.root.mainloop()
+        messagebox.showinfo("Screen captured. Enter query and click Research.")
+    
+    def on_add_image_clicked(self):
+        """File dialog for image"""
+    
+    def on_research_clicked(self):
+        """Start research in thread"""
+    
+    def on_stop_clicked(self):
+        """Stop button"""
+    
+    def on_export_clicked(self):
+        """Export results as json"""
+    
+    def on_copy_results(self):
+        """Copy button"""
+    
+    def display_results(self, response):
+        """Show ResearchResponse"""
+    
+    def run(self):
+        """Start GUI"""
