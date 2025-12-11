@@ -2,7 +2,8 @@ from langchain_community.tools import WikipediaQueryRun, DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.tools import tool, ToolRuntime
 from datetime import datetime
-import numpy as np
+import chromadb
+from chromadb.config import Settings
 
 def save_to_txt(data: str, filename: str = "research_output.txt"):
     timestamp = datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
@@ -13,55 +14,55 @@ def save_to_txt(data: str, filename: str = "research_output.txt"):
 
     return f"Data succesfully saved to {filename}"
 
-# Global FAISS variables - initialized when documents are indexed
-embedding_model = None
-faiss_index = None
-documents = []
+#global chromadb client and collection
+
+chroma_client = None
+chroma_collection = None
 
 def semantic_search(query: str, top_k: int = 5) -> str:
     """Execute semantic search against indexed documents"""
-    # Check if FAISS is initialized
-    if faiss_index is None or embedding_model is None:
-        return "Error: FAISS index not initialized. No documents have been indexed yet."
-
-    if len(documents) == 0:
-        return "Error: No documents in index."
-
+    if chroma_collection is None:
+        return "Error: ChromaDB not initialized. No documents have been indexed yet."
+    
     try:
-        # Embed the query
-        query_embedding = embedding_model.encode([query])[0]
-        query_embedding = np.array([query_embedding], dtype=np.float32)
+        #query collection
+        results = chroma_collection.query(
+            query_texts = [query],
+            n_results=top_k
+        )
 
-        # Search FAISS index
-        distances, indices = faiss_index.search(query_embedding, min(top_k, len(documents)))
+        if not results['documents'] or len(results['documents'][0]) == 0:
+            return "No matching documents found"
 
-        # Retrieve and format results
-        results = []
-        for i, idx in enumerate(indices[0]):
-            doc_preview = documents[idx][:200] if len(documents[idx]) > 200 else documents[idx]
-            results.append(f"Match {i+1}: {doc_preview}...")
-
-        return "\n".join(results) if results else "No matching documents found"
+        formatted_results = []
+        for i , doc in enumerate(results['documents'][0]):
+            doc_preview = doc[:200] if len(doc) > 200 else doc
+            formatted_results.append(f"Match {i+1}: {doc_preview}...")
+        
+        return "\n".join(formatted_results)
     except Exception as e:
         return f"Error in semantic search: {str(e)}"
 
-def initialize_faiss_index(docs_list, embedding_model_name='all-MiniLM-L6-v2'):
-    """Initialize FAISS index with documents"""
-    global embedding_model, faiss_index, documents
+def initialize_chroma_collection(docs_list, collection_name = "research_docs"):
+    """Initialize ChromaDB collection with documents"""
+    global chroma_client, chroma_collection
     try:
-        from sentence_transformers import SentenceTransformer
-        from faiss import IndexFlatL2
+        chroma_client = chromadb.PersistentClient(
+            path = "./chroma_db",
+            settings = Settings(anonymized_telemetry = False)
+        )
 
-        embedding_model = SentenceTransformer(embedding_model_name)
-        documents = docs_list
-
-        # Create embeddings
-        embeddings = embedding_model.encode(docs_list)
-        embeddings = np.array(embeddings, dtype=np.float32)
-
-        # Create FAISS index
-        faiss_index = IndexFlatL2(embeddings.shape[1])
-        faiss_index.add(embeddings)
+        #delete collection if exists
+        try:
+            chroma_client.delete_collection(name = collection_name)
+        except:
+            pass
+        
+        #create new collection
+        chroma_collection = chroma_client.create_collection(
+            name = collection_name,
+            metadata={"description": "Research documents for semantic search"}
+        )
 
         return f"FAISS index initialized with {len(docs_list)} documents"
     except ImportError:

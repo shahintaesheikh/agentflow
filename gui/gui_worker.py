@@ -24,7 +24,7 @@ class AgentWorker(threading.Thread):
                 self.callback("Starting research query...", 0)
 
             #helper function for progress callback
-            def progress(self, iteration, max_iter, msg):
+            def progress(iteration, max_iter, msg):
                 pct = int((iteration / max_iter) *100)
                 if self.callback:
                     self.callback((f"[{iteration}/{max_iter}] {msg}", pct))
@@ -33,14 +33,14 @@ class AgentWorker(threading.Thread):
             response_text = agent_loop(
                 query=self.query,
                 image_path=self.image_path,
-                max_iterations=self.max_iter
+                max_iterations=self.max_iter,
                 progress_callback=progress
             )
 
             #parse json response
             try:
                 start = response_text.find("{")
-                end = response_text.rfind("{") + 1
+                end = response_text.rfind("}") + 1
                 json_str = response_text[start:end]
                 result_dict = json.loads(json_str)
                 self.result = ResearchResponse(**result_dict)
@@ -59,14 +59,7 @@ class AgentWorker(threading.Thread):
             if self.callback:
                 self.callback((f"Error: {str(e)}", -1))
             self.result = None
-
-            if self.callback:
-                self.callback("Research Complete!", 100)
-            
-        except Exception as e:
-            if self.callback:
-                self.callback(f"Error: {str(e)}", -1)
-            self.result = None
+    
 
     def stop(self):
         """Signal worker to stop execution"""

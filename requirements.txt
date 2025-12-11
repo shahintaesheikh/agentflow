@@ -6,6 +6,5 @@ anthropic
 python-dotenv
 pydantic
 langchain-openai
-faiss-cpu
-sentence-transformers
+chromadb
 numpy
