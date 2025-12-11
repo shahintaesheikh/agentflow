@@ -58,7 +58,7 @@ def get_image_media_type(image_path: str) -> str:
     }
     return media_types.get(extension, "image/jpeg")
 
-def agent_loop(query: str, image_path: str = None, max_iterations: int = 10) -> str:
+def agent_loop(query: str, image_path: str = None, max_iterations: int = 10, progress_callback = None) -> str:
     """Run the agent loop for a research query, optionally with an image"""
     client, tools = initialize_agent()
 
@@ -92,6 +92,11 @@ def agent_loop(query: str, image_path: str = None, max_iterations: int = 10) -> 
 
     while iteration < max_iterations:
         iteration += 1
+
+        #progress updates
+        if progress_callback:
+            progress_callback(iteration, max_iterations, f"Processing iteration {iteration}")
+
 
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
