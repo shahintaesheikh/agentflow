@@ -18,6 +18,7 @@ class AgentWorker(threading.Thread):
         """Execute agent research query in background thread"""
         try:
             from agent import agent_loop, ResearchResponse
+
             import json
 
             if self.callback:

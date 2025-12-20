@@ -8,3 +8,4 @@ pydantic
 langchain-openai
 chromadb
 numpy
+pyperclip

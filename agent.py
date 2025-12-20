@@ -97,7 +97,6 @@ def agent_loop(query: str, image_path: str = None, max_iterations: int = 10, pro
         if progress_callback:
             progress_callback(iteration, max_iterations, f"Processing iteration {iteration}")
 
-
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
@@ -145,52 +144,7 @@ def agent_loop(query: str, image_path: str = None, max_iterations: int = 10, pro
 
     return "Max iterations reached without completion"
 
-
-def run_research_query(query: str, image_path: str = None) -> ResearchResponse:
-    """Output structured response, optionally with image analysis"""
-    response_text = agent_loop(query, image_path=image_path)
-
-    #extract JSON from response
-    try:
-        #try to parse the entire response as JSON first
-        result_dict = json.loads(response_text)
-    except json.JSONDecodeError:
-        #if that fails, try to find JSON in the response
-        try:
-            #look for JSON block in the response
-            start_idx = response_text.find("{")
-            end_idx = response_text.rfind("}") + 1
-            if start_idx >= 0 and end_idx > start_idx:
-                json_str = response_text[start_idx:end_idx]
-                result_dict = json.loads(json_str)
-            else:
-                raise ValueError("No JSON found in response")
-        except (json.JSONDecodeError, ValueError) as e:
-            print(f"Warning: Could not parse response as JSON: {e}")
-            print(f"Raw response: {response_text}")
-            #Return a default response with the raw text
-            result_dict = {
-                "topic": "Unknown",
-                "summary": response_text,
-                "sources": [],
-                "tools_used": []
-            }
-
-    #Convert to ResearchResponse
-    try:
-        result = ResearchResponse(**result_dict)
-    except Exception as e:
-        print(f"Warning: Could not convert response to ResearchResponse: {e}")
-        #Return with raw data
-        result = ResearchResponse(
-            topic=result_dict.get("topic", "Unknown"),
-            summary=result_dict.get("summary", ""),
-            sources=result_dict.get("sources", []),
-            tools_used=result_dict.get("tools_used", [])
-        )
-
-    return result
-
+"""
 if __name__ == "__main__":
     #Get user input
     query = input("What can I help you research?\n")
@@ -217,3 +171,4 @@ if __name__ == "__main__":
     print(f"\nSummary:\n{response.summary}")
     print(f"\nSources: {', '.join(response.sources) if response.sources else 'None'}")
     print(f"\nTools Used: {', '.join(response.tools_used) if response.tools_used else 'None'}")
+"""
