@@ -46,7 +46,7 @@ class AgentGUI:
             return
         
         self.worker_thread = AgentWorker(
-            query = self.query,
+            query = query_text,
             image_path = self.selected_image_path,
             max_iter = 10, 
             callback = self.update_progress
@@ -112,8 +112,15 @@ class AgentGUI:
 
     
     def display_results(self, response):
-        label = CTkLabel(master = self.frame, text = self.worker_thread.result)
-        label.pack(padx = 20, pady = 20)
+        formatted_text = f"""Topic: {response.topic}
+
+        {response.summary}
+
+        Sources: {', '.join(response.sources)}"""
+
+        result_textbox = CTkTextbox(master = self.frame, width = 460, height= 200)
+        result_textbox.insert("1.0", formatted_text)
+        result_textbox.configure(state= "disabled") #read only
 
         clear = CTkButton(master = self.frame, text = "Clear Response", command = label.destroy)
         clear.pack(padx = 20, pady = 25)
@@ -123,14 +130,21 @@ class AgentGUI:
         query_textbox.pack(padx=10, pady=10)
         self.query = query_textbox.get('1.0', 'end-1c')
 
-        query_btn = CTkButton(master = self.frame, text="Research", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe",command= self.on_research_clicked, command = query_textbox.delete('1.0', 'end-1c'))
+        query_btn = CTkButton(master = self.frame, text="Research", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe",command= self.on_research_clicked)
         query_btn.pack(pady = 5)
 
         copy_btn = CTkButton(master = self.frame, text = "Copy Text", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_copy_results)
+        copy_btn.pack(pady = 10)
 
         ss_btn = CTkButton(master = self.frame, text = "Read Screen", corner_radius = 32, fg_color="#cdb4db", hover_color="#bde0fe",
                         border_color="#bde0fe", border_width = 2, command=self.on_read_screen_clicked)
         ss_btn.place(relx = 0.5, rely = 0.5, anchor = "s")
+
+        export_btn = CTkButton(master = self.frame,  border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_export_clicked)
+        export_btn.pack(pady = 15)
+
+        stop_btn = CTkButton(master = self.frame,  border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_stop_clicked)
+        stop_btn.pack(pady = 20)
     
     def run(self):
         """Start GUI"""
