@@ -3,6 +3,9 @@ from gui_worker import AgentWorker
 from PIL import ImageGrab
 import pyperclip
 import time
+import json
+from datetime import datetime
+from tkinter import filedialog
 
 class AgentGUI:
 
@@ -13,7 +16,8 @@ class AgentGUI:
         self.query = None
         self.worker_thread = None
         self.selected_image_path = None
-        self.response = None
+        self.frame = CTkFrame(master = self.app, fg_color="#ffd6e8", border_color="#e7c6ff", border_width=2)
+        self.frame.pack(fill="both", expand =True)
         set_appearance_mode("dark")
 
     def on_read_screen_clicked(self):
@@ -79,36 +83,59 @@ class AgentGUI:
     
     def on_export_clicked(self):
         """Export results as json"""
-    
+        if not self.worker_thread or not self.worker_thread.result:
+            return
+        
+        result_dict = self.worker_thread.result.model_dump()
+        result_dict['exported_at'] = datetime.now().isoformat()
+
+        filename = f"research_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+        try:
+            with open(filename, 'w', encoding = 'utf-8') as f:
+                json.dump(result_dict, f, indent = 2, ensure_ascii= False)
+
+            print(f"Exported to {filename}")
+
+            success_label = CTkLabel(master=self.frame, text = f"Saved: {filename}", text_color = "green")
+            success_label.pack(padx=10, pady=10)
+            self.app.after(3000, success_label.destroy)
+        except Exception as e:
+            print(f"Export failed: {e}")
+
     def on_copy_results(self):
         """Copy button"""
         pyperclip.copy(self.response)
-        label = CTkLabel(master= self.app, text = "Results copied to clipboard")
+        label = CTkLabel(master= self.frame, text = "Results copied to clipboard")
         label.pack(padx = 10, pady = 10)
-        time.sleep(2)
-        label.pack_forget()
+        self.app.after(3000, label.destroy)
 
     
     def display_results(self, response):
-        self.repsonse = response.summary
-        print(f"Results: {response.summary}")
+        label = CTkLabel(master = self.frame, text = self.worker_thread.result)
+        label.pack(padx = 20, pady = 20)
+
+        clear = CTkButton(master = self.frame, text = "Clear Response", command = label.destroy)
+        clear.pack(padx = 20, pady = 25)
 
     def setup_ui(self):
-        frame = CTkFrame(master = self.app, fg_color="#ffd6e8", border_color="#e7c6ff", border_width=2)
-        frame.pack(fill="both", expand =True)
-
-        query_textbox = CTkTextbox(master=frame, border_width = 2, fg_color="#cdb4db",border_color = "#bde0fe")
+        query_textbox = CTkTextbox(master=self.frame, border_width = 2, fg_color="#cdb4db",border_color = "#bde0fe")
         query_textbox.pack(padx=10, pady=10)
         self.query = query_textbox.get('1.0', 'end-1c')
 
-        query_btn = CTkButton(master = frame, text="Research", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe",command= self.on_research_clicked, command = query_textbox.delete('1.0', 'end-1c'))
+        query_btn = CTkButton(master = self.frame, text="Research", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe",command= self.on_research_clicked, command = query_textbox.delete('1.0', 'end-1c'))
         query_btn.pack(pady = 5)
 
-        copy_btn = CTkButton(master = frame, text = "Copy Text", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_copy_results)
+        copy_btn = CTkButton(master = self.frame, text = "Copy Text", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_copy_results)
 
-        ss_btn = CTkButton(master = frame, text = "Read Screen", corner_radius = 32, fg_color="#cdb4db", hover_color="#bde0fe",
+        ss_btn = CTkButton(master = self.frame, text = "Read Screen", corner_radius = 32, fg_color="#cdb4db", hover_color="#bde0fe",
                         border_color="#bde0fe", border_width = 2, command=self.on_read_screen_clicked)
         ss_btn.place(relx = 0.5, rely = 0.5, anchor = "s")
     
     def run(self):
         """Start GUI"""
+        self.app.mainloop()
+
+if __name__ == "__main__":
+    gui = AgentGUI()
+    gui.run()
