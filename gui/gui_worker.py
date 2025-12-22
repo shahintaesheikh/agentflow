@@ -17,7 +17,7 @@ class AgentWorker(threading.Thread):
     def run(self):
         """Execute agent research query in background thread"""
         try:
-            from agent import agent_loop, ResearchResponse
+            from gui.agent import agent_loop, ResearchResponse
 
             import json
 

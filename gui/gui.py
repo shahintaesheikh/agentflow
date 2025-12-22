@@ -13,11 +13,11 @@ class AgentGUI:
     def __init__(self):
         self.app = CTk()
         self.app.geometry("500x400")
-        self.setup_ui()
         self.worker_thread = None
         self.selected_image_path = None
         self.frame = CTkFrame(master = self.app, fg_color="#ffd6e8", border_color="#e7c6ff", border_width=2)
         self.frame.pack(fill="both", expand =True)
+        self.setup_ui()
         set_appearance_mode("dark")
 
     def on_read_screen_clicked(self):
