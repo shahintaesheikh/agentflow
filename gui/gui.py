@@ -6,6 +6,7 @@ import time
 import json
 from datetime import datetime
 from tkinter import filedialog
+from agent import ResearchResponse
 
 class AgentGUI:
 
@@ -13,7 +14,6 @@ class AgentGUI:
         self.app = CTk()
         self.app.geometry("500x400")
         self.setup_ui()
-        self.query = None
         self.worker_thread = None
         self.selected_image_path = None
         self.frame = CTkFrame(master = self.app, fg_color="#ffd6e8", border_color="#e7c6ff", border_width=2)
@@ -27,10 +27,10 @@ class AgentGUI:
         screenshot.save(temp_path)
 
         self.selected_image_path = temp_path
-        self.update_image_display()
 
-        label = CTkLabel(master=self.app, text ="Screen captured. Enter query and click Research.")
-        label.configure()
+        label = CTkLabel(master=self.frame, text ="Screen captured. Enter query and click Research.", text_color = "green")
+        label.pack(padx = 10, pady = 10)
+        self.app.after(5000, label.destroy)
 
     #def on_add_image_clicked(self):
         """File dialog for image"""
@@ -39,10 +39,12 @@ class AgentGUI:
         """Start research in thread"""
         from gui_worker import AgentWorker
 
-        query_text = self.query_textbox.get('1', 'end-1c')
+        query_text = self.query_textbox.get('1.0', 'end-1c')
 
         if not query_text.strip():
-            raise RuntimeError("No query entered")
+            error_label = CTkLabel(master = self.frame, text = "Please enter a query", text_color = "red")
+            error_label.pack(padx = 10, pady = 10)
+            self.app.after(3000, error_label.destroy)
             return
         
         self.worker_thread = AgentWorker(
@@ -105,30 +107,46 @@ class AgentGUI:
 
     def on_copy_results(self):
         """Copy button"""
-        pyperclip.copy(self.response)
+        if not self.worker_thread or not self.worker_thread.result:
+            error_label = CTkLabel(master = self.frame, text = "No output to copy", text_color="red")
+            error_label.pack(padx = 10, pady = 10)
+            self.app.after(3000, error_label.destroy)
+            return
+
+        formatted_text = f"""Topic: {self.worker_thread.result.topic}
+                            
+                            Summary: {self.worker_thread.result.summary}
+                            
+                            Sources: {', '.join(self.worker_thread.result.sources) if self.worker_thread.result.sources else 'None'}
+                            
+                            Tools Used: {', '.join(self.worker_thread.result.tools_used) if self.worker_thread.result.tools_used else 'None'}"""
+        
+        pyperclip.copy(formatted_text)
         label = CTkLabel(master= self.frame, text = "Results copied to clipboard")
         label.pack(padx = 10, pady = 10)
         self.app.after(3000, label.destroy)
 
     
-    def display_results(self, response):
+    def display_results(self, response : ResearchResponse):
         formatted_text = f"""Topic: {response.topic}
 
         {response.summary}
+
+        Tools Used: {', '.join(response.tools_used)}
 
         Sources: {', '.join(response.sources)}"""
 
         result_textbox = CTkTextbox(master = self.frame, width = 460, height= 200)
         result_textbox.insert("1.0", formatted_text)
+        result_textbox.pack(padx = 20, pady = 20)
         result_textbox.configure(state= "disabled") #read only
 
-        clear = CTkButton(master = self.frame, text = "Clear Response", command = label.destroy)
+        clear = CTkButton(master = self.frame, text = "Clear Response", command = result_textbox.destroy)
         clear.pack(padx = 20, pady = 25)
 
     def setup_ui(self):
-        query_textbox = CTkTextbox(master=self.frame, border_width = 2, fg_color="#cdb4db",border_color = "#bde0fe")
-        query_textbox.pack(padx=10, pady=10)
-        self.query = query_textbox.get('1.0', 'end-1c')
+        self.query_textbox = CTkTextbox(master=self.frame, border_width = 2, fg_color="#cdb4db",border_color = "#bde0fe")
+        self.query_textbox.pack(padx=10, pady=10)
 
         query_btn = CTkButton(master = self.frame, text="Research", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe",command= self.on_research_clicked)
         query_btn.pack(pady = 5)
@@ -140,10 +158,10 @@ class AgentGUI:
                         border_color="#bde0fe", border_width = 2, command=self.on_read_screen_clicked)
         ss_btn.place(relx = 0.5, rely = 0.5, anchor = "s")
 
-        export_btn = CTkButton(master = self.frame,  border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_export_clicked)
+        export_btn = CTkButton(master = self.frame, text ="Export JSON", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_export_clicked)
         export_btn.pack(pady = 15)
 
-        stop_btn = CTkButton(master = self.frame,  border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_stop_clicked)
+        stop_btn = CTkButton(master = self.frame, text = "Stop", border_width = 2, fg_color = "#cdb4db", border_color ="#bde0fe", hover_color="#bde0fe", command = self.on_stop_clicked)
         stop_btn.pack(pady = 20)
     
     def run(self):
