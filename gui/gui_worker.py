@@ -17,12 +17,12 @@ class AgentWorker(threading.Thread):
     def run(self):
         """Execute agent research query in background thread"""
         try:
-            from gui.agent import agent_loop, ResearchResponse
+            from agent import agent_loop, ResearchResponse
 
             import json
 
             if self.callback:
-                self.callback("Starting research query...", 0)
+                self.callback(("Starting research query...", 0))
 
             #helper function for progress callback
             def progress(iteration, max_iter, msg):
@@ -54,7 +54,7 @@ class AgentWorker(threading.Thread):
                 )
             
             if self.callback:
-                self.callback("Complete!", 100)
+                self.callback(("Complete!", 100))
             
         except Exception as e:
             if self.callback:
@@ -66,5 +66,5 @@ class AgentWorker(threading.Thread):
         """Signal worker to stop execution"""
         self.running = False
         if self.callback:
-            self.callback("Cancelled by user", -1)
+            self.callback(("Cancelled by user", -1))
         
