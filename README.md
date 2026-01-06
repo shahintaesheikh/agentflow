@@ -1,6 +1,6 @@
 # ⚡ Agentflow
 
-> **A Production-Ready Agentic Research Assistant powered by Claude Sonnet 4 with Manual ReAct Loop Implementation**
+> **A Personal Agentic Research Assistant powered by Claude Sonnet 4 with Manual ReAct Loop Implementation**
 
 Agentflow is an intelligent research assistant that combines the power of Anthropic's Claude with a custom-built ReAct (Reasoning + Acting) agent loop, multi-modal vision capabilities, and a sleek modern GUI. Unlike framework-based solutions, Agentflow implements its own agent orchestration, giving you complete control over the reasoning process.
 
