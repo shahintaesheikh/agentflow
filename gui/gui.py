@@ -38,7 +38,7 @@ class AgentGUI:
         self.app = CTk()
         self.app.geometry("900x750")
         self.app.minsize(600, 500)  # Set minimum size for usability
-        self.app.title("AI Research Assistant")
+        self.app.title("Agetnflow")
         self.worker_thread = None
         self.selected_image_path = None
 
@@ -92,7 +92,7 @@ class AgentGUI:
         header.pack_propagate(False)
 
         # App title
-        title_label = CTkLabel(master=header, text="⚡ AI Research Assistant",
+        title_label = CTkLabel(master=header, text="⚡ Agentflow",
                               font=self.FONTS['heading'], text_color=self.COLORS['text_primary'])
         title_label.pack(side="left", padx=20, pady=15)
 
