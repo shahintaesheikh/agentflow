@@ -37,6 +37,7 @@ class AgentGUI:
     def __init__(self):
         self.app = CTk()
         self.app.geometry("900x750")
+        self.app.minsize(600, 500)  # Set minimum size for usability
         self.app.title("AI Research Assistant")
         self.worker_thread = None
         self.selected_image_path = None
@@ -51,6 +52,10 @@ class AgentGUI:
         # Main container with padding
         self.main_frame = CTkFrame(master=self.app, fg_color=self.COLORS['bg_primary'])
         self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+
+        # Configure grid weights for responsive scaling
+        self.app.grid_rowconfigure(0, weight=1)
+        self.app.grid_columnconfigure(0, weight=1)
 
         self.setup_ui()
 
@@ -114,10 +119,10 @@ class AgentGUI:
                               anchor="w")
         input_label.pack(fill="x", pady=(0, 8))
 
-        # Input field with modern styling
+        # Input field with modern styling (responsive height)
         self.query_textbox = CTkTextbox(
             master=input_container,
-            height=100,
+            height=80,  # Reduced for better scaling
             wrap="word",
             fg_color=self.COLORS['bg_secondary'],
             text_color=self.COLORS['text_primary'],
@@ -126,7 +131,7 @@ class AgentGUI:
             corner_radius=12,
             font=self.FONTS['body']
         )
-        self.query_textbox.pack(fill="x", pady=(0, 12))
+        self.query_textbox.pack(fill="both", expand=False, pady=(0, 12))
 
         # Screenshot button (modern pill style)
         self.screenshot_btn = CTkButton(
@@ -150,7 +155,7 @@ class AgentGUI:
         action_container.pack(fill="x", pady=15)
 
         button_frame = CTkFrame(master=action_container, fg_color="transparent")
-        button_frame.pack()
+        button_frame.pack(expand=True)
 
         # Primary Research button with cyan accent
         self.research_btn = CTkButton(
@@ -162,10 +167,9 @@ class AgentGUI:
             text_color="#000000",
             corner_radius=8,
             height=44,
-            width=160,
             command=self.on_research_clicked
         )
-        self.research_btn.pack(side="left", padx=6)
+        self.research_btn.pack(side="left", padx=6, fill="x", expand=True)
 
         # Stop button with secondary styling
         self.stop_btn = CTkButton(
@@ -179,10 +183,9 @@ class AgentGUI:
             border_width=1,
             corner_radius=8,
             height=44,
-            width=120,
             command=self.on_stop_clicked
         )
-        self.stop_btn.pack(side="left", padx=6)
+        self.stop_btn.pack(side="left", padx=6, fill="x", expand=True)
 
     def create_progress_section(self, parent):
         """Create modern progress bar with gradient effect"""
@@ -247,7 +250,7 @@ class AgentGUI:
         bottom_container.pack(fill="x", pady=(5, 0))
 
         button_frame = CTkFrame(master=bottom_container, fg_color="transparent")
-        button_frame.pack()
+        button_frame.pack(expand=True)
 
         # Copy button
         self.copy_btn = CTkButton(
@@ -261,10 +264,9 @@ class AgentGUI:
             border_width=1,
             corner_radius=8,
             height=40,
-            width=140,
             command=self.on_copy_results
         )
-        self.copy_btn.pack(side="left", padx=6)
+        self.copy_btn.pack(side="left", padx=6, fill="x", expand=True)
 
         # Export button with accent
         self.export_btn = CTkButton(
@@ -276,10 +278,9 @@ class AgentGUI:
             text_color=self.COLORS['text_primary'],
             corner_radius=8,
             height=40,
-            width=140,
             command=self.on_export_clicked
         )
-        self.export_btn.pack(side="left", padx=6)
+        self.export_btn.pack(side="left", padx=6, fill="x", expand=True)
 
     # ========== EVENT HANDLERS ==========
 
