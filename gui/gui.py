@@ -2,47 +2,304 @@ from customtkinter import *
 from gui_worker import AgentWorker
 from PIL import ImageGrab
 import pyperclip
-import time
 import json
 from datetime import datetime
 from tkinter import filedialog
 from agent import ResearchResponse
 
 class AgentGUI:
+    """Modern AI Research Assistant GUI with sleek dark theme and glass-morphism effects"""
+
+    # Design System Constants
+    COLORS = {
+        'bg_primary': '#1a1a1a',
+        'bg_secondary': '#2d2d2d',
+        'bg_card': '#1e1e2e',
+        'accent_primary': '#00d4ff',
+        'accent_secondary': '#9d4edd',
+        'success': '#14f195',
+        'error': '#ff4757',
+        'text_primary': '#ffffff',
+        'text_secondary': '#a0a0a0',
+        'text_tertiary': '#6b6b6b',
+        'border': '#3d3d3d',
+        'hover': '#3a3a3a'
+    }
+
+    FONTS = {
+        'heading': ("Segoe UI", 20, "bold"),
+        'subheading': ("Segoe UI", 14, "bold"),
+        'body': ("Segoe UI", 12),
+        'caption': ("Segoe UI", 10),
+        'button': ("Segoe UI", 11, "bold")
+    }
 
     def __init__(self):
         self.app = CTk()
-        self.app.geometry("600x700")
+        self.app.geometry("900x750")
+        self.app.title("AI Research Assistant")
         self.worker_thread = None
         self.selected_image_path = None
-        self.frame = CTkFrame(master = self.app, fg_color="#ffd6e8", border_color="#e7c6ff", border_width=2)
-        self.frame.pack(fill="both", expand =True)
-        self.setup_ui()
+
+        # Set dark theme
         set_appearance_mode("dark")
+        set_default_color_theme("blue")
+
+        # Configure window background
+        self.app.configure(fg_color=self.COLORS['bg_primary'])
+
+        # Main container with padding
+        self.main_frame = CTkFrame(master=self.app, fg_color=self.COLORS['bg_primary'])
+        self.main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Build the modern UI layout"""
+
+        # === HEADER BAR ===
+        self.create_header()
+
+        # === CONTENT CONTAINER ===
+        content_frame = CTkFrame(master=self.main_frame, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+        # === INPUT SECTION ===
+        self.create_input_section(content_frame)
+
+        # === ACTION BUTTONS ===
+        self.create_action_buttons(content_frame)
+
+        # === PROGRESS SECTION ===
+        self.create_progress_section(content_frame)
+
+        # === RESULTS CARD ===
+        self.create_results_section(content_frame)
+
+        # === BOTTOM ACTIONS ===
+        self.create_bottom_actions(content_frame)
+
+    def create_header(self):
+        """Create custom header bar with app title and status"""
+        header = CTkFrame(master=self.main_frame, fg_color=self.COLORS['bg_secondary'],
+                         height=60, corner_radius=0)
+        header.pack(fill="x", padx=0, pady=0)
+        header.pack_propagate(False)
+
+        # App title
+        title_label = CTkLabel(master=header, text="⚡ AI Research Assistant",
+                              font=self.FONTS['heading'], text_color=self.COLORS['text_primary'])
+        title_label.pack(side="left", padx=20, pady=15)
+
+        # Status indicator
+        self.status_frame = CTkFrame(master=header, fg_color="transparent")
+        self.status_frame.pack(side="right", padx=20)
+
+        self.status_dot = CTkLabel(master=self.status_frame, text="●",
+                                  font=("Segoe UI", 16), text_color=self.COLORS['success'])
+        self.status_dot.pack(side="left", padx=(0, 8))
+
+        self.status_text = CTkLabel(master=self.status_frame, text="Ready",
+                                   font=self.FONTS['caption'], text_color=self.COLORS['text_secondary'])
+        self.status_text.pack(side="left")
+
+    def create_input_section(self, parent):
+        """Create modern input section with search-style textbox"""
+        input_container = CTkFrame(master=parent, fg_color="transparent")
+        input_container.pack(fill="x", pady=(20, 15))
+
+        # Input label
+        input_label = CTkLabel(master=input_container, text="Research Query",
+                              font=self.FONTS['subheading'], text_color=self.COLORS['text_primary'],
+                              anchor="w")
+        input_label.pack(fill="x", pady=(0, 8))
+
+        # Input field with modern styling
+        self.query_textbox = CTkTextbox(
+            master=input_container,
+            height=100,
+            wrap="word",
+            fg_color=self.COLORS['bg_secondary'],
+            text_color=self.COLORS['text_primary'],
+            border_color=self.COLORS['border'],
+            border_width=1,
+            corner_radius=12,
+            font=self.FONTS['body']
+        )
+        self.query_textbox.pack(fill="x", pady=(0, 12))
+
+        # Screenshot button (modern pill style)
+        self.screenshot_btn = CTkButton(
+            master=input_container,
+            text="📸  Capture Screen",
+            font=self.FONTS['button'],
+            fg_color=self.COLORS['bg_secondary'],
+            hover_color=self.COLORS['hover'],
+            text_color=self.COLORS['text_secondary'],
+            border_color=self.COLORS['border'],
+            border_width=1,
+            corner_radius=20,
+            height=36,
+            command=self.on_read_screen_clicked
+        )
+        self.screenshot_btn.pack(anchor="w")
+
+    def create_action_buttons(self, parent):
+        """Create primary action buttons"""
+        action_container = CTkFrame(master=parent, fg_color="transparent")
+        action_container.pack(fill="x", pady=15)
+
+        button_frame = CTkFrame(master=action_container, fg_color="transparent")
+        button_frame.pack()
+
+        # Primary Research button with cyan accent
+        self.research_btn = CTkButton(
+            master=button_frame,
+            text="🔍  Start Research",
+            font=self.FONTS['button'],
+            fg_color=self.COLORS['accent_primary'],
+            hover_color="#00b8e6",
+            text_color="#000000",
+            corner_radius=8,
+            height=44,
+            width=160,
+            command=self.on_research_clicked
+        )
+        self.research_btn.pack(side="left", padx=6)
+
+        # Stop button with secondary styling
+        self.stop_btn = CTkButton(
+            master=button_frame,
+            text="⏹  Stop",
+            font=self.FONTS['button'],
+            fg_color=self.COLORS['bg_secondary'],
+            hover_color=self.COLORS['hover'],
+            text_color=self.COLORS['text_secondary'],
+            border_color=self.COLORS['border'],
+            border_width=1,
+            corner_radius=8,
+            height=44,
+            width=120,
+            command=self.on_stop_clicked
+        )
+        self.stop_btn.pack(side="left", padx=6)
+
+    def create_progress_section(self, parent):
+        """Create modern progress bar with gradient effect"""
+        progress_container = CTkFrame(master=parent, fg_color="transparent")
+        progress_container.pack(fill="x", pady=15)
+
+        # Progress bar with modern styling
+        self.progress_bar = CTkProgressBar(
+            master=progress_container,
+            height=8,
+            corner_radius=4,
+            fg_color=self.COLORS['bg_secondary'],
+            progress_color=self.COLORS['accent_primary'],
+            border_width=0
+        )
+        self.progress_bar.pack(fill="x", pady=(0, 8))
+        self.progress_bar.set(0)
+
+        # Progress label with percentage
+        self.progress_label = CTkLabel(
+            master=progress_container,
+            text="Ready to research",
+            font=self.FONTS['caption'],
+            text_color=self.COLORS['text_tertiary']
+        )
+        self.progress_label.pack()
+
+    def create_results_section(self, parent):
+        """Create glass-morphism results card"""
+        # Results card with glass effect
+        self.results_card = CTkFrame(
+            master=parent,
+            fg_color=self.COLORS['bg_card'],
+            border_color=self.COLORS['border'],
+            border_width=1,
+            corner_radius=16
+        )
+        self.results_card.pack(fill="both", expand=True, pady=15)
+
+        # Scrollable frame for results
+        self.results_scroll = CTkScrollableFrame(
+            master=self.results_card,
+            fg_color="transparent",
+            scrollbar_button_color=self.COLORS['bg_secondary'],
+            scrollbar_button_hover_color=self.COLORS['hover']
+        )
+        self.results_scroll.pack(fill="both", expand=True, padx=2, pady=2)
+
+        # Placeholder
+        self.results_placeholder = CTkLabel(
+            master=self.results_scroll,
+            text="Results will appear here\n\nEnter a query and click 'Start Research' to begin",
+            font=self.FONTS['body'],
+            text_color=self.COLORS['text_tertiary'],
+            justify="center"
+        )
+        self.results_placeholder.pack(expand=True, pady=60)
+
+    def create_bottom_actions(self, parent):
+        """Create bottom action buttons for export/copy"""
+        bottom_container = CTkFrame(master=parent, fg_color="transparent")
+        bottom_container.pack(fill="x", pady=(5, 0))
+
+        button_frame = CTkFrame(master=bottom_container, fg_color="transparent")
+        button_frame.pack()
+
+        # Copy button
+        self.copy_btn = CTkButton(
+            master=button_frame,
+            text="📋  Copy Results",
+            font=self.FONTS['button'],
+            fg_color=self.COLORS['bg_secondary'],
+            hover_color=self.COLORS['hover'],
+            text_color=self.COLORS['text_secondary'],
+            border_color=self.COLORS['border'],
+            border_width=1,
+            corner_radius=8,
+            height=40,
+            width=140,
+            command=self.on_copy_results
+        )
+        self.copy_btn.pack(side="left", padx=6)
+
+        # Export button with accent
+        self.export_btn = CTkButton(
+            master=button_frame,
+            text="💾  Export JSON",
+            font=self.FONTS['button'],
+            fg_color=self.COLORS['accent_secondary'],
+            hover_color="#8b3ed4",
+            text_color=self.COLORS['text_primary'],
+            corner_radius=8,
+            height=40,
+            width=140,
+            command=self.on_export_clicked
+        )
+        self.export_btn.pack(side="left", padx=6)
+
+    # ========== EVENT HANDLERS ==========
 
     def on_read_screen_clicked(self):
+        """Capture screenshot for vision analysis"""
         screenshot = ImageGrab.grab()
-
         temp_path = "/tmp/screen_capture.png"
         screenshot.save(temp_path)
-
         self.selected_image_path = temp_path
 
-        self.progress_label.configure(text="📸 Screen captured! Enter query and click Research.", text_color="green")
-        self.app.after(5000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+        self.update_status("Screen captured successfully", "success")
+        self.app.after(5000, lambda: self.update_status("Ready", "success"))
 
-    #def on_add_image_clicked(self):
-        """File dialog for image"""
-    
     def on_research_clicked(self):
-        """Start research in thread"""
-        from gui_worker import AgentWorker
-
+        """Start research in background thread"""
         query_text = self.query_textbox.get('1.0', 'end-1c')
 
         if not query_text.strip():
-            self.progress_label.configure(text="Please enter a query", text_color="red")
-            self.app.after(3000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+            self.update_status("Please enter a query", "error")
+            self.app.after(3000, lambda: self.update_status("Ready", "success"))
             return
 
         # Disable buttons during research
@@ -51,42 +308,40 @@ class AgentGUI:
         self.export_btn.configure(state="disabled")
         self.screenshot_btn.configure(state="disabled")
 
-        # Reset progress bar
+        # Reset progress
         self.progress_bar.set(0)
+        self.update_status("Researching...", "active")
 
         self.worker_thread = AgentWorker(
-            query = query_text,
-            image_path = self.selected_image_path,
-            max_iter = 10,
-            callback = self.update_progress
+            query=query_text,
+            image_path=self.selected_image_path,
+            max_iter=10,
+            callback=self.update_progress
         )
 
         self.worker_thread.start()
-
         self.check_progress()
-    
+
     def update_progress(self, data):
-        """Called by worker thread with updates"""
+        """Update progress bar and status from worker thread"""
         if isinstance(data, tuple):
             msg, pct = data
-            # Update progress bar and label
             if pct >= 0:
-                self.progress_bar.set(pct / 100)  # CTkProgressBar uses 0.0-1.0
-                self.progress_label.configure(text=msg, text_color="#5a189a")
+                self.progress_bar.set(pct / 100)
+                self.progress_label.configure(text=f"{msg} ({pct}%)")
+                self.status_text.configure(text="Processing...")
             else:
                 # Error state
-                self.progress_label.configure(text=msg, text_color="red")
+                self.update_status(msg, "error")
         else:
-            msg = data
-            self.progress_label.configure(text=msg, text_color="#666666")
-    
+            self.progress_label.configure(text=data)
+
     def check_progress(self):
-        """Check if worker is done"""
+        """Monitor worker thread completion"""
         if self.worker_thread and self.worker_thread.is_alive():
-            # Still running, check again in 100 ms
             self.app.after(100, self.check_progress)
         else:
-            # Finished - re-enable buttons
+            # Re-enable buttons
             self.research_btn.configure(state="normal")
             self.copy_btn.configure(state="normal")
             self.export_btn.configure(state="normal")
@@ -94,41 +349,41 @@ class AgentGUI:
 
             if self.worker_thread and self.worker_thread.result:
                 self.display_results(self.worker_thread.result)
+                self.update_status("Research complete", "success")
             else:
-                self.progress_label.configure(text="Research completed", text_color="#666666")
-    
+                self.update_status("Ready", "success")
+
     def on_stop_clicked(self):
-        """Stop button"""
+        """Stop research execution"""
         if self.worker_thread:
             self.worker_thread.stop()
-    
+            self.update_status("Research stopped", "error")
+
     def on_export_clicked(self):
-        """Export results as json"""
+        """Export results to JSON file"""
         if not self.worker_thread or not self.worker_thread.result:
-            self.progress_label.configure(text="No results to export", text_color="red")
-            self.app.after(3000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+            self.update_status("No results to export", "error")
+            self.app.after(3000, lambda: self.update_status("Ready", "success"))
             return
 
         result_dict = self.worker_thread.result.model_dump()
         result_dict['exported_at'] = datetime.now().isoformat()
-
         filename = f"research_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         try:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(result_dict, f, indent=2, ensure_ascii=False)
-
-            self.progress_label.configure(text=f"💾 Saved: {filename}", text_color="green")
-            self.app.after(5000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+            self.update_status(f"Exported: {filename}", "success")
+            self.app.after(5000, lambda: self.update_status("Ready", "success"))
         except Exception as e:
-            self.progress_label.configure(text=f"Export failed: {e}", text_color="red")
-            self.app.after(5000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+            self.update_status(f"Export failed: {e}", "error")
+            self.app.after(5000, lambda: self.update_status("Ready", "success"))
 
     def on_copy_results(self):
-        """Copy button"""
+        """Copy results to clipboard"""
         if not self.worker_thread or not self.worker_thread.result:
-            self.progress_label.configure(text="No results to copy", text_color="red")
-            self.app.after(3000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+            self.update_status("No results to copy", "error")
+            self.app.after(3000, lambda: self.update_status("Ready", "success"))
             return
 
         formatted_text = f"""Topic: {self.worker_thread.result.topic}
@@ -140,120 +395,103 @@ Sources: {', '.join(self.worker_thread.result.sources) if self.worker_thread.res
 Tools Used: {', '.join(self.worker_thread.result.tools_used) if self.worker_thread.result.tools_used else 'None'}"""
 
         pyperclip.copy(formatted_text)
-        self.progress_label.configure(text="📋 Results copied to clipboard!", text_color="green")
-        self.app.after(3000, lambda: self.progress_label.configure(text="Ready", text_color="#666666"))
+        self.update_status("Copied to clipboard", "success")
+        self.app.after(3000, lambda: self.update_status("Ready", "success"))
 
-    
     def display_results(self, response: ResearchResponse):
-        """Display research results in the persistent results frame"""
-        # Clear previous results and placeholder
-        for widget in self.results_frame.winfo_children():
+        """Display research results in modern card layout"""
+        # Clear previous results
+        for widget in self.results_scroll.winfo_children():
             widget.destroy()
 
-        # Topic header with emoji
-        topic_label = CTkLabel(master=self.results_frame, text=f"📊 {response.topic}",
-                              font=("Arial", 16, "bold"), text_color="#5a189a",
-                              anchor="w")
-        topic_label.pack(pady=(15, 5), padx=15, anchor="w")
+        # Topic header
+        topic_frame = CTkFrame(master=self.results_scroll, fg_color="transparent")
+        topic_frame.pack(fill="x", padx=20, pady=(20, 10))
 
-        # Summary section
-        summary_label = CTkLabel(master=self.results_frame, text="Summary:",
-                                font=("Arial", 12, "bold"), text_color="#3c096c",
-                                anchor="w")
-        summary_label.pack(pady=(10, 5), padx=15, anchor="w")
+        topic_icon = CTkLabel(master=topic_frame, text="📊", font=("Segoe UI", 24))
+        topic_icon.pack(side="left", padx=(0, 12))
 
-        summary_box = CTkTextbox(master=self.results_frame, height=200, wrap="word",
-                                fg_color="#ffffff", text_color="#000000",
-                                border_width=1, border_color="#bde0fe")
-        summary_box.insert("1.0", response.summary)
-        summary_box.configure(state="disabled")
-        summary_box.pack(padx=15, pady=5, fill="both", expand=True)
+        topic_label = CTkLabel(
+            master=topic_frame,
+            text=response.topic,
+            font=("Segoe UI", 18, "bold"),
+            text_color=self.COLORS['text_primary'],
+            anchor="w",
+            justify="left"
+        )
+        topic_label.pack(side="left", fill="x", expand=True)
+
+        # Summary card
+        summary_card = CTkFrame(
+            master=self.results_scroll,
+            fg_color=self.COLORS['bg_secondary'],
+            corner_radius=12
+        )
+        summary_card.pack(fill="both", expand=True, padx=20, pady=15)
+
+        summary_header = CTkLabel(
+            master=summary_card,
+            text="Summary",
+            font=self.FONTS['subheading'],
+            text_color=self.COLORS['accent_primary'],
+            anchor="w"
+        )
+        summary_header.pack(fill="x", padx=20, pady=(20, 10))
+
+        summary_text = CTkTextbox(
+            master=summary_card,
+            wrap="word",
+            fg_color="transparent",
+            text_color=self.COLORS['text_primary'],
+            font=("Segoe UI", 12),
+            border_width=0,
+            height=200
+        )
+        summary_text.insert("1.0", response.summary)
+        summary_text.configure(state="disabled")
+        summary_text.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         # Metadata section
-        tools_text = f"🔧 Tools Used: {', '.join(response.tools_used) if response.tools_used else 'None'}"
-        tools_label = CTkLabel(master=self.results_frame, text=tools_text,
-                              font=("Arial", 10), text_color="#666666",
-                              anchor="w")
-        tools_label.pack(pady=(10, 2), padx=15, anchor="w")
+        meta_frame = CTkFrame(master=self.results_scroll, fg_color="transparent")
+        meta_frame.pack(fill="x", padx=20, pady=(0, 20))
 
-        sources_text = f"📚 Sources: {len(response.sources)} found"
-        sources_label = CTkLabel(master=self.results_frame, text=sources_text,
-                                font=("Arial", 10), text_color="#666666",
-                                anchor="w")
-        sources_label.pack(pady=(2, 15), padx=15, anchor="w")
+        # Tools used
+        if response.tools_used:
+            tools_label = CTkLabel(
+                master=meta_frame,
+                text=f"🔧 Tools: {', '.join(response.tools_used)}",
+                font=self.FONTS['caption'],
+                text_color=self.COLORS['text_tertiary'],
+                anchor="w"
+            )
+            tools_label.pack(fill="x", pady=4)
 
-        # Update progress label
-        self.progress_label.configure(text="Research complete!", text_color="green")
+        # Sources count
+        sources_label = CTkLabel(
+            master=meta_frame,
+            text=f"📚 Sources: {len(response.sources)} found",
+            font=self.FONTS['caption'],
+            text_color=self.COLORS['text_tertiary'],
+            anchor="w"
+        )
+        sources_label.pack(fill="x", pady=4)
 
-    def setup_ui(self):
-        # === INPUT SECTION ===
-        input_frame = CTkFrame(master=self.frame, fg_color="transparent")
-        input_frame.pack(padx=10, pady=10, fill="x")
+    def update_status(self, message: str, status_type: str = "success"):
+        """Update status indicator and message"""
+        color_map = {
+            "success": self.COLORS['success'],
+            "error": self.COLORS['error'],
+            "active": self.COLORS['accent_primary']
+        }
 
-        self.query_textbox = CTkTextbox(master=input_frame, border_width=2, fg_color="#cdb4db",
-                                        border_color="#bde0fe", wrap="word", height=80)
-        self.query_textbox.pack(padx=5, pady=5, fill="x")
+        self.status_dot.configure(text_color=color_map.get(status_type, self.COLORS['success']))
+        self.status_text.configure(text=message)
+        self.progress_label.configure(text=message)
 
-        self.screenshot_btn = CTkButton(master=input_frame, text="📸 Read Screen", corner_radius=32,
-                                       fg_color="#cdb4db", hover_color="#bde0fe",
-                                       border_color="#bde0fe", border_width=2,
-                                       command=self.on_read_screen_clicked)
-        self.screenshot_btn.pack(pady=5)
-
-        # === ACTION BUTTONS ===
-        action_frame = CTkFrame(master=self.frame, fg_color="transparent")
-        action_frame.pack(pady=10)
-
-        self.research_btn = CTkButton(master=action_frame, text="🔍 Research", border_width=2,
-                                     fg_color="#cdb4db", border_color="#bde0fe",
-                                     hover_color="#bde0fe", command=self.on_research_clicked,
-                                     width=120)
-        self.research_btn.pack(side="left", padx=5)
-
-        self.stop_btn = CTkButton(master=action_frame, text="⏹️ Stop", border_width=2,
-                                 fg_color="#cdb4db", border_color="#bde0fe",
-                                 hover_color="#bde0fe", command=self.on_stop_clicked,
-                                 width=120)
-        self.stop_btn.pack(side="left", padx=5)
-
-        # === PROGRESS BAR ===
-        self.progress_bar = CTkProgressBar(master=self.frame, width=560)
-        self.progress_bar.pack(padx=20, pady=5)
-        self.progress_bar.set(0)
-
-        self.progress_label = CTkLabel(master=self.frame, text="Ready", text_color="#666666",
-                                      font=("Arial", 11))
-        self.progress_label.pack(pady=2)
-
-        # === RESULTS SECTION ===
-        self.results_frame = CTkFrame(master=self.frame, fg_color="#f0e6ff", corner_radius=10,
-                                     border_width=1, border_color="#e7c6ff")
-        self.results_frame.pack(padx=15, pady=10, fill="both", expand=True)
-
-        self.results_placeholder = CTkLabel(master=self.results_frame,
-                                           text="Results will appear here after research completes",
-                                           text_color="#888888", font=("Arial", 12, "italic"))
-        self.results_placeholder.pack(pady=40)
-
-        # === EXPORT BUTTONS ===
-        export_frame = CTkFrame(master=self.frame, fg_color="transparent")
-        export_frame.pack(pady=10)
-
-        self.copy_btn = CTkButton(master=export_frame, text="📋 Copy", border_width=2,
-                                 fg_color="#cdb4db", border_color="#bde0fe",
-                                 hover_color="#bde0fe", command=self.on_copy_results,
-                                 width=120)
-        self.copy_btn.pack(side="left", padx=5)
-
-        self.export_btn = CTkButton(master=export_frame, text="💾 Export JSON", border_width=2,
-                                   fg_color="#cdb4db", border_color="#bde0fe",
-                                   hover_color="#bde0fe", command=self.on_export_clicked,
-                                   width=120)
-        self.export_btn.pack(side="left", padx=5)
-    
     def run(self):
-        """Start GUI"""
+        """Start the GUI application"""
         self.app.mainloop()
+
 
 if __name__ == "__main__":
     gui = AgentGUI()
